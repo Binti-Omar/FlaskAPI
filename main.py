@@ -5,8 +5,21 @@
 # 4. You must define a status code(200,201,404,401,500)
 
 from flask import Flask,jsonify,request
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from database import Base,User
 
 app = Flask(__name__)
+
+DATABASE_URL = "postgresql+psycopg2://postgres:C0717824020@localhost:5432/flask_api"
+
+engine = create_engine(DATABASE_URL,echo=True)
+
+session = sessionmaker(bind=engine)
+
+mysession = session()
+
+Base.metadata.create_all(engine)
 
 allowed_methods = ["GET","POST","UPDATE","DELETE","PATCH"]
 user_list = []
@@ -30,7 +43,10 @@ def users():
             if data["name"] == "" or data["location"] =="":
                 return jsonify({"msg":"name and location fields required"}),403
             else:
-                user_list.append(data)
+                # user_list.append(data)
+                new_user = User(name = data["name"], location = data["location"])
+                mysession.add(new_user)
+                mysession.commit()
                 return jsonify({"msg":"Successfully added user."}),201
         else:
             return jsonify({"msg":"Method not allowed"}),405
