@@ -5,7 +5,7 @@
 # 4. You must define a status code(200,201,404,401,500)
 
 from flask import Flask,jsonify,request
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine,select
 from sqlalchemy.orm import sessionmaker
 from database import Base,User
 
@@ -13,16 +13,18 @@ app = Flask(__name__)
 
 DATABASE_URL = "postgresql+psycopg2://postgres:C0717824020@localhost:5432/flask_api"
 
-engine = create_engine(DATABASE_URL,echo=True)
+# Connecting SQLAlchemy to PostgerSql using engine function
+engine = create_engine(DATABASE_URL,echo=False)
 
+# Create  a session to call query methods
 session = sessionmaker(bind=engine)
-
 mysession = session()
 
+# Create tables automatically
 Base.metadata.create_all(engine)
 
 allowed_methods = ["GET","POST","UPDATE","DELETE","PATCH"]
-user_list = []
+
 
 @app.route("/",methods = allowed_methods)
 def home():
@@ -37,17 +39,29 @@ def users():
     try:
         method = request.method.lower()
         if method == "get":
+            user_list = []
+            query =select(User)
+            myusers = list(mysession.scalars(query).all())
+            # print (users)
+
+            for user in myusers:
+                user_list.append({"id" : user.id,
+                                  "name" :  user.name ,
+                                  "location" : user.location})
+                
             return jsonify({"data":user_list}),200
         elif method == "post":
+            # Convert JSON to Dictionary
             data = request.get_json ()
+            # Check if all fields are received
             if data["name"] == "" or data["location"] =="":
                 return jsonify({"msg":"name and location fields required"}),403
             else:
-                # user_list.append(data)
+                # user_list.append(data)/store user in users table using SQLAlchemy
                 new_user = User(name = data["name"], location = data["location"])
                 mysession.add(new_user)
                 mysession.commit()
-                return jsonify({"msg":"Successfully added user."}),201
+                return jsonify({"msg":"Successfully added user {data['name']}."}),201
         else:
             return jsonify({"msg":"Method not allowed"}),405
     except Exception as e:
