@@ -7,9 +7,12 @@
 from flask import Flask,jsonify,request
 from sqlalchemy import create_engine,select
 from sqlalchemy.orm import sessionmaker
-from database import User, db
+from database import User, Base
+from flask_cors import CORS
 
 app = Flask(__name__)
+
+CORS(app)
 
 DATABASE_URL = "postgresql+psycopg2://postgres:C0717824020@localhost:5432/vuemyduka"
 
@@ -21,7 +24,7 @@ session = sessionmaker(bind=engine)
 mysession = session()
 
 # Create tables automatically
-db.metadata.create_all(engine)
+Base.metadata.create_all(engine)
 
 allowed_methods = ["GET","POST","DELETE","PATCH"]
 
@@ -65,6 +68,18 @@ def users():
             return jsonify({"msg":"Method not allowed"}),405
     except Exception as e:
         return jsonify({"error":str(e)}),500
+
+@app.route('/register', methods= allowed_methods)
+def register():
+    data = request.get_json
+    
+    if data["username"] == "" or data["email"] == "" or data["password"]:
+            return jsonify({ "error": "Name and Location cannot be empty" }), 400
+    else:
+        new_user = User(username=data["username"], email=data["email"], password=data["password"])
+        mysession.add(new_user)
+        mysession.commit()
+        return jsonify({ "message": f"User created successfully{data['username']}" }), 201
 
 app.run (debug=True)
 
